@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title> 계산기</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <h1>계산기</h1>
+  <input type="text" id="imageUrl" placeholder="이미지 URL을 입력하세요" size="50">
+  <button id="calculateBtn">계산하기</button>
+  <div id="loading" style="display: none;">계산 중...</div>
+  <pre id="result"></pre>
+
+
+  <script>
+    var resultId = 1;
+
+    var images = [
+      { id: 1, url: "https://i.imgur.com/06EOB4L.jpeg" },
+      { id: 2, url: "https://i.imgur.com/fHg197w.jpeg" },
+      { id: 3, url: "https://i.imgur.com/dgp0RIV.jpeg" },
+      { id: 4, url: "https://i.imgur.com/LIdkTqB.jpeg" },
+      { id: 5, url: "https://i.imgur.com/8xO7EmB.jpeg" },
+      { id: 6, url: "https://i.imgur.com/PTv8ox0.jpeg" },
+      { id: 7, url: "https://i.imgur.com/9j0S90T.jpeg" },
+      { id: 8, url: "https://i.imgur.com/5oXElMH.jpeg" },
+      { id: 9, url: "https://i.imgur.com/Yajk6hZ.jpeg" },
+      { id: 10, url: "https://i.imgur.com/QQX0r7D.jpeg" },
+      { id: 11, url: "https://i.imgur.com/J7PaxSI.jpeg" },
+      { id: 12, url: "https://i.imgur.com/GJNUoBy.jpeg" },
+      { id: 13, url: "https://i.imgur.com/s4TGdAU.jpeg" },
+      { id: 14, url: "https://i.imgur.com/Cf8IPws.jpeg" },
+      { id: 15, url: "https://i.imgur.com/GiUXi35.jpeg" },
+      { id: 16, url: "https://i.imgur.com/YTSK2ZM.jpeg" },
+      { id: 17, url: "https://i.imgur.com/6abrqgt.jpeg" },
+      { id: 18, url: "https://i.imgur.com/lt1qq5d.jpeg" },
+      { id: 19, url: "https://i.imgur.com/lq9mmod.jpeg" }
+
+    ];
+
+    function clickImg(elem, rId) {
+      console.log("ele.innerText: ", elem.innerText);
+      
+      document.getElementById('imageUrl').value = elem.innerText.trim();
+      resultId = rId;
+      // document.getElementById('result'+'_'+resultId).innerText = "이미지 클릭됨: " + elem.innerText.trim();
+      // const imageUrl = "https://i.imgur.com/06EOB4L.jpeg";
+      // const result = "이미지 클릭됨: " + imageUrl;
+      // document.getElementById("result").innerText = result;
+    }
+  </script>
+  
+  <script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-analytics.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
+    import { getAI, getGenerativeModel, VertexAIBackend } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-ai.js";
+    // import { getAI, getGenerativeModel, VertexAIBackend } from "firebase/ai";
+    // import { getAI, getGenerativeModel, GenerativeBackend } from "firebase/vertexai";
+
+    // Your web app's Firebase configuration
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+        apiKey: "AIzaSyB4m4zwqqZQatAmtgU5azEfefiHwxaRZmM",
+        authDomain: "gemini-54ee2.firebaseapp.com",
+        projectId: "gemini-54ee2",
+        storageBucket: "gemini-54ee2.firebasestorage.app",
+        messagingSenderId: "974677229969",
+        appId: "1:974677229969:web:75a43977751d259f59da30",
+        measurementId: "G-SZK2GQB49Z"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const storage = getStorage(app);
+
+    // Initialize the Gemini Developer API backend service
+    const ai = getAI(app, { backend: new VertexAIBackend });
+
+
+    // import Ajv from "https://cdn.jsdelivr.net/npm/ajv@8.12.0/dist/ajv.min.js";
+
+    // const ajv = new Ajv();
+    const jsonSchema = {
+        "type": "object",
+        "properties": {
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "calories_kcal": {"type": "number"}
+                    },
+                    "required": ["name", "calories_kcal"]
+                }
+            },
+            "total_calories_kcal": {"type": "number"}
+        },
+        "required": ["items", "total_calories_kcal"]
+    };
+
+    // Use a model that supports multimodal inputs
+    // const model = getGenerativeModel(ai, { model: "gemini-2.0-flash-lite" });
+
+    const model = getGenerativeModel(ai, {
+      model: "gemini-2.0-flash-lite",
+      // In the generation config, set the `responseMimeType` to `application/json`
+      // and pass the JSON schema object into `responseSchema`.
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: jsonSchema
+      },
+  });
+
+    const calculateBtn = document.getElementById('calculateBtn');
+    const imageUrlInput = document.getElementById('imageUrl');
+    const resultDiv = document.getElementById('result');
+    const loadingDiv = document.getElementById('loading');
+
+
+     async function uploadImageAndGetURL(file) {
+      // Storage 경로 지정 (예: images 폴더에 파일명으로 저장)
+      const storageRef = ref(storage, `images/${file.name}`);
+      // 파일 업로드
+      await uploadBytes(storageRef, file);
+      // 다운로드 URL 획득
+      const url = await getDownloadURL(storageRef);
+      return url; // 이 URL이 업로드된 이미지의 접근 주소!
+    }
+
+    async function uploadBinaryImageAndGetURL(binaryData, fileName, mimeType) {
+      const storage = getStorage(); // 이미 초기화된 storage 객체 사용 권장
+      const storageRef = ref(storage, `tests/${fileName}`);
+
+      console.log("binaryData: ", binaryData);
+
+      const metadata = {
+        contentType: "image/jpeg" // e.g. "image/jpeg", "image/png"
+      };
+      
+      // uploadBytes는 Blob, Uint8Array, ArrayBuffer 모두 지원
+      await uploadBytes(storageRef, binaryData, metadata);
+      
+
+      const url = await getDownloadURL(storageRef);
+      return url;
+    }
+
+    function blobToUint8Array(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const arrayBuffer = reader.result;
+          resolve(new Uint8Array(arrayBuffer));
+        };
+        reader.onerror = () => {
+          reject(reader.error);
+        };
+        reader.readAsArrayBuffer(blob);
+      });
+   }
+
+    calculateBtn.addEventListener('click', async () => {
+      const imageUrl = imageUrlInput.value;
+      if (!imageUrl) {
+        resultDiv.textContent = '이미지 URL을 입력해주세요.';
+        return;
+      }
+
+      resultDiv.textContent = '';
+      loadingDiv.style.display = 'block';
+
+      try {
+        // Fetch the image from the URL.
+        // Note: This can be blocked by CORS policy on the image server.
+        // For a production app, you might need a server-side proxy to fetch the image.
+        const response = await fetch(imageUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const blob = await response.blob();
+
+        // Convert the image blob to a base64 string.
+        var base64Image = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        // const uint8Array = await blobToUint8Array(blob);
+        // var fileName= imageUrl.split('/').pop();
+        // var cloudImgUrl = uploadBinaryImageAndGetURL(uint8Array,fileName, blob.type)
+        // console.log("cloudUrl: ", cloudImgUrl);
+
+        // Assemble the prompt with text and the image.
+        const imagePart = {
+          inlineData: {
+            data: base64Image,
+            mimeType: blob.type
+            // url:imageUrl,
+            // mimeType : "image/jpeg"
+          }
+        };
+
+        const imageUrls = {
+            url:imageUrl,
+            mimeType : "image/jpeg"
+        };
+
+
+
+        var url1 = "https://firebasestorage.googleapis.com/v0/b/gemini-54ee2.firebasestorage.app/o/tests%2FfHg197w.jpeg?alt=media&token=f2ded136-e652-49eb-b420-ee6bc99790d3"
+        var url2 = "gs://gemini-54ee2.firebasestorage.app/tests/fHg197w.jpeg"
+        const imagePart2 =
+        { "fileData": { "fileUri": url2, "mimeType": "image/jpeg" } }
+        
+
+        // const prompt = "사진 속 음식들을 분석해서 각각의 칼로리와 총 칼로리를 계산해 줘. 결과를 명확하고 보기 쉽게 정리해 줘. 응답은 한글로 해줘 \n\n" +
+        //                "출력은 json 형식으로만  해주고 json이외의 값은 주지마. ```json 도 넣지마 , 예시: {\"items\": [{\"name\": \"음식1\", \"calories_kcal\": 100}, {\"name\": \"음식2\", \"calories_kcal\": 200}], \"total_calories_kcal\": 300}";
+
+        const prompt = "사진 속 음식들을 분석해서 각각의 칼로리와 총 칼로리를 계산해 줘. 결과를 명확하고 보기 쉽게 정리해 줘. 응답은 한글로 해줘"
+
+        
+        console.log(prompt);
+        // Generate content with both text and image.
+        const result = await model.generateContent([prompt, imagePart2]);
+      
+
+         console.log("---");
+        // const response = result.response;
+        const jsonString =  await result.response.text(); 
+        
+        console.log("--jsonString-");
+        console.log(jsonString);
+        const data = JSON.parse(jsonString);
+
+
+
+        // Format the JSON object for display.
+        let formattedText = `총 칼로리: ${data.total_calories_kcal} kcal\n\n`;
+        formattedText += "개별 항목:\n";
+        data.items.forEach(item => {
+          formattedText += `- ${item.name}: ${item.calories_kcal} kcal\n`;
+        });
+
+        resultDiv.textContent = formattedText;
+        document.getElementById('result_' + resultId).innerText = formattedText;  
+
+      } catch (error) {
+        console.error('Error:', error);
+        resultDiv.textContent = '오류가 발생했습니다: ' + error.message + '\n\n';
+      } finally {
+        loadingDiv.style.display = 'none';
+      }
+    });
+  </script>
+
+
+
+
+
+<div class="container">
+  <h2>Image Table</h2>
+  <table class="table table-bordered table-striped">
+    <thead class="thead-light">
+      <tr>
+        <th>이미지 (갤러리 음식 => jpeg 70% 압축) </th>
+      
+        <th>result</th>
+      </tr>
+
+      <tr>
+        <td width="200">
+          <img src="https://i.imgur.com/06EOB4L.jpeg" onClick="window.open(images[0].url)" width="200", height="200"></img>
+          <a href="#" onClick="clickImg(this,1)"> https://i.imgur.com/06EOB4L.jpeg </a>
+        </td>
+        <td id="result_1"></td>
+      </tr>
+
+      <tr>
+        <td width="200">
+          <img src="https://i.imgur.com/fHg197w.jpeg"  onClick="window.open('https://i.imgur.com/fHg197w.jpeg')" width="200", height="200"/>  
+          <a href="#" onClick="clickImg(this,2)"> https://i.imgur.com/fHg197w.jpeg</a></td>
+        <td id="result_2"></td>
+      </tr>
+
+
+    </thead>
+    <tbody>
+      <!-- Rows will be added here dynamically -->
+    </tbody>
+  </table>
+</div>
+
+
+
+
+</body>
+</html>

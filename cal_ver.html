@@ -57,6 +57,7 @@
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-analytics.js";
     import { getStorage, ref, uploadBytes, getDownloadURL} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
     import { getAI, getGenerativeModel, VertexAIBackend } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-ai.js";
+    import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app-check.js"
     // import { getAI, getGenerativeModel, VertexAIBackend } from "firebase/ai";
     // import { getAI, getGenerativeModel, GenerativeBackend } from "firebase/vertexai";
 
@@ -72,10 +73,17 @@
         measurementId: "G-SZK2GQB49Z"
     };
 
+
+
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
     const storage = getStorage(app);
+
+    const appCheck = initializeAppCheck(app, {
+        provider: new ReCaptchaEnterpriseProvider("6Le0O5YrAAAAABFZNEVKRoZDL01R7GKKJzrNz1zh"),
+        isTokenAutoRefreshEnabled: true // Set to true to allow auto-refresh.
+    });
 
     // Initialize the Gemini Developer API backend service
     const ai = getAI(app, { backend: new VertexAIBackend });

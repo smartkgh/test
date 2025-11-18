@@ -42,10 +42,14 @@
 
     // 이미지 클릭시 정보로 보여주기
     function clickImg(elem, rId) {
+      //로그_master
       console.log("ele.innerText: ", elem.innerText);
       
       document.getElementById('imageUrl').value = elem.innerText.trim();
       resultId = rId;
+
+      //로그_master
+
       // document.getElementById('result'+'_'+resultId).innerText = "이미지 클릭됨: " + elem.innerText.trim();
       // const imageUrl = "https://i.imgur.com/06EOB4L.jpeg";
       // const result = "이미지 클릭됨: " + imageUrl;
